@@ -98,8 +98,8 @@ def crf(n_jobs, is_coco=False):
         image_id = eval_list[i]
         image_path = os.path.join(args.image_root, image_id + '.jpg')
         image = cv2.imread(image_path, cv2.IMREAD_COLOR).astype(np.float32)
-        label_path = os.path.join(args.gt_root, image_id + '.png')
-        gt_label = np.asarray(Image.open(label_path), dtype=np.int32)
+        # label_path = os.path.join(args.gt_root, image_id + '.png')
+        # gt_label = np.asarray(Image.open(label_path), dtype=np.int32)
         # Mean subtraction
         image -= mean_bgr
         # HWC -> CHW
@@ -118,12 +118,13 @@ def crf(n_jobs, is_coco=False):
         label = np.argmax(prob, axis=0)
         keys = np.pad(cam_dict['keys'] + 1, (1, 0), mode='constant')
         label = keys[label]
+
         if not args.eval_only:
             confidence = np.max(prob, axis=0)
             label[confidence < 0.95] = 255
             cv2.imwrite(os.path.join(args.pseudo_mask_save_path, image_id + '.png'), label.astype(np.uint8))
 
-        return label.astype(np.uint8), gt_label.astype(np.uint8)
+        return label.astype(np.uint8) #, gt_label.astype(np.uint8)
 
     # CRF in multi-process
     results = joblib.Parallel(n_jobs=n_jobs, verbose=10, pre_dispatch="all")(
