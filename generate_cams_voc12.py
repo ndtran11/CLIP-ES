@@ -21,6 +21,8 @@ try:
     BICUBIC = InterpolationMode.BICUBIC
 except ImportError:
     BICUBIC = Image.BICUBIC
+
+import json
 import warnings
 warnings.filterwarnings("ignore")
 _CONTOUR_INDEX = 1 if cv2.__version__.split('.')[0] == '3' else 0
@@ -90,39 +92,52 @@ def img_ms_and_flip(img_path, ori_height, ori_width, scales=[1.0], patch_size=16
         all_imgs.append(image_flip)
     return all_imgs
 
+def img_ms_and_flip_v2(img, ori_height, ori_width, scales=[1.0], patch_size=16):
+    all_imgs = []
+    for scale in scales:
+        preprocess = _transform_resize(int(np.ceil(scale * int(ori_height) / patch_size) * patch_size), int(np.ceil(scale * int(ori_width) / patch_size) * patch_size))
+        image = preprocess(img)
+        image_ori = image
+        image_flip = torch.flip(image, [-1])
+        all_imgs.append(image_ori)
+        all_imgs.append(image_flip)
+    return all_imgs
 
-def perform(process_id, dataset_list, args, model, bg_text_features, fg_text_features, cam):
+def perform(process_id, dataset_list, labels_list, args, model, bg_text_features, fg_text_features, cam):
     n_gpus = torch.cuda.device_count()
     device_id = "cuda:{}".format(process_id % n_gpus)
+
     databin = dataset_list[process_id]
+    labelbin  = labels_list[process_id]
+
     model = model.to(device_id)
     bg_text_features = bg_text_features.to(device_id)
     fg_text_features = fg_text_features.to(device_id)
     for im_idx, im in enumerate(tqdm(databin)):
         img_path = os.path.join(args.img_root, im)
-        xmlfile = img_path.replace('/JPEGImages', '/Annotations')
-        xmlfile = xmlfile.replace('.jpg', '.xml')
-        with open(xmlfile) as fid:
-            xml_str = fid.read()
-        xml = etree.fromstring(xml_str)  # etree包 读取xml文件
-        data = parse_xml_to_dict(xml)["annotation"]
+        img = Image.open(img_path)
+        label_file = os.path.join(args.label_root, im.replace('jpg', 'json'))
 
-        ori_width = int(data['size']['width'])
-        ori_height = int(data['size']['height'])
+        ori_width, ori_height = img.size
+
+        with open(label_file, 'r') as f:
+            data = json.load(f)
 
         label_list = []
         label_id_list = []
-        for obj in data["object"]:
-            obj["name"] = new_class_names[class_names.index(obj["name"])]
-            if obj["name"] not in label_list:
-                label_list.append(obj["name"])
-                label_id_list.append(new_class_names.index(obj["name"]))
+
+        for obj in data["labels"]:
+            obj = new_class_names[class_names.index(obj)]
+
+            if obj not in label_list:
+                label_list.append(obj)
+                label_id_list.append(new_class_names.index(obj))
 
         if len(label_list) == 0:
             print("{} not have valid object".format(im))
             return
 
-        ms_imgs = img_ms_and_flip(img_path, ori_height, ori_width, scales=[1.0])
+        ms_imgs = img_ms_and_flip_v2(img_path, ori_height, ori_width, scales=[1.0])
         ms_imgs = [ms_imgs[0]]
         cam_all_scales = []
         highres_cam_all_scales = []
@@ -217,6 +232,7 @@ def perform(process_id, dataset_list, args, model, bg_text_features, fg_text_fea
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--img_root', type=str, default='/home/xxx/datasets/VOC2012/JPEGImages')
+    parser.add_argument('--label_root', type=str, default='/home/xxx/datasets/VOC2012/JPEGImages')
     parser.add_argument('--split_file', type=str, default='./voc12/train.txt')
     parser.add_argument('--cam_out_dir', type=str, default='./final/ablation/baseline')
     parser.add_argument('--model', type=str, default='/home/xxx/pretrained_models/clip/ViT-B-16.pt')
@@ -229,6 +245,9 @@ if __name__ == "__main__":
     train_list = np.loadtxt(args.split_file, dtype=str)
     train_list = [x + '.jpg' for x in train_list]
 
+    labels_list = np.loadtxt(args.split_file, dtype=str)
+    labels_list = [x + '.json' for x in labels_list]
+
     if not os.path.exists(args.cam_out_dir):
         os.makedirs(args.cam_out_dir)
 
@@ -240,9 +259,11 @@ if __name__ == "__main__":
     cam = GradCAM(model=model, target_layers=target_layers, reshape_transform=reshape_transform)
 
     dataset_list = split_dataset(train_list, n_splits=args.num_workers)
+    labels_list = split_dataset(labels_list, n_splits=args.num_workers)
+
     if args.num_workers == 1:
-        perform(0, dataset_list, args, model, bg_text_features, fg_text_features, cam)
+        perform(0, dataset_list, labels_list, args, model, bg_text_features, fg_text_features, cam)
     else:
         multiprocessing.spawn(perform, nprocs=args.num_workers,
-                              args=(dataset_list, args, model, bg_text_features, fg_text_features, cam))
+                              args=(dataset_list, labels_list, args, model, bg_text_features, fg_text_features, cam))
 
