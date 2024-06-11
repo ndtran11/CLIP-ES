@@ -149,13 +149,9 @@ if __name__ == "__main__":
     parser.add_argument("--eval_only", action="store_true")
     args = parser.parse_args()
 
-    is_coco = 'coco' in args.cam_out_dir
-    if 'voc' in args.cam_out_dir:
-        eval_list = list(np.loadtxt(args.split_file, dtype=str))
-    elif 'coco' in args.cam_out_dir:
-        file_list = tuple(open(args.split_file, "r"))
-        file_list = [id_.rstrip().split(" ") for id_ in file_list]
-        eval_list = [x[0] for x in file_list]#[:2000]
+    is_coco = False
+    eval_list = list(np.loadtxt(args.split_file, dtype=str))
+
     print('{} images to eval'.format(len(eval_list)))
 
     if not args.eval_only and not os.path.exists(args.pseudo_mask_save_path):
