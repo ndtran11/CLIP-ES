@@ -135,7 +135,11 @@ def perform(process_id, dataset_list, labels_list, args, model, bg_text_features
 
         if len(label_list) == 0:
             print("{} not have valid object".format(im))
-            return
+            np.save(os.path.join(args.cam_out_dir, im.replace('jpg', 'npy')),
+                {"keys": np.zeros(1, dtype=np.int32),
+                "attn_highres": np.zeros((1, ori_height, ori_width), dtype=np.float16)
+                })
+            continue
 
         ms_imgs = img_ms_and_flip_v2(img_path, ori_height, ori_width, scales=[1.0])
         ms_imgs = [ms_imgs[0]]
