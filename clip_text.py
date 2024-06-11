@@ -3,10 +3,10 @@ BACKGROUND_CATEGORY = ['ground','land','grass','tree','building','wall','sky','l
                         'cloud','house','mountain','ocean','road','rock','street','valley','bridge','sign',
                         ]
 
-class_names = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
+class_names = ['plane', 'bicycle', 'bird', 'boat', 'bottle',
                    'bus', 'car', 'cat', 'chair', 'cow',
-                   'diningtable', 'dog', 'horse', 'motorbike', 'person',
-                   'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor',
+                   'dining table', 'dog', 'horse', 'motorbike', 'person',
+                   'potted plant', 'sheep', 'sofa', 'train', 'monitor',
                    ]
                    
 new_class_names = ['aeroplane', 'bicycle', 'bird avian', 'boat', 'bottle',

@@ -135,9 +135,9 @@ def perform(process_id, dataset_list, labels_list, args, model, bg_text_features
 
         if len(label_list) == 0:
             print("{} not have valid object".format(im))
-            return
+            continue 
 
-        ms_imgs = img_ms_and_flip_v2(img_path, ori_height, ori_width, scales=[1.0])
+        ms_imgs = img_ms_and_flip_v2(img, ori_height, ori_width, scales=[1.0])
         ms_imgs = [ms_imgs[0]]
         cam_all_scales = []
         highres_cam_all_scales = []
@@ -227,6 +227,7 @@ def perform(process_id, dataset_list, labels_list, args, model, bg_text_features
                 #"highres": highres_cam_all_scales.cpu().numpy().astype(np.float16),
                 "attn_highres": refined_cam_all_scales.cpu().numpy().astype(np.float16),
                 })
+
     return 0
 
 if __name__ == "__main__":
